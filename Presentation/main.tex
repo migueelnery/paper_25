@@ -1,0 +1,300 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{seahorse} 
+\setbeamertemplate{caption}[numbered]
+\beamertemplatenavigationsymbolsempty
+
+
+\usepackage{multimedia}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage[export]{adjustbox}
+\usepackage{caption}
+\usepackage{ragged2e}
+\usepackage{caption}
+\usepackage{pifont}
+\usepackage{hyperref}
+
+\newcommand{\xmark}{\ding{55}}%
+
+\title[SENAI - CIMATEC - LRSA]{\textbf{A Generalized Extended Kalman Filter
+Implementation for the Robot Operating System}}
+\subtitle{Paper Analysis}
+% \institute{Laboratório de Robótica e Sistemas Autônomos}
+\author[Miguel Nery]{Miguel Felipe Nery Vieira}
+\institute[]{SENAI CIMATEC}
+\titlegraphic{\begin{flushright}
+    \includegraphics[width=3cm]{fig/senai.png}
+\end{flushright}}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Concept Map}
+\begin{frame}{Concept Map}
+    \centering
+    \includegraphics[scale=0.45]{fig/cmap.jpg}
+\end{frame}
+
+\section{Introduction}
+\begin{frame} {Introduction}
+    \begin{columns}
+    \begin{column}{0.55\textwidth} 
+    \begin{itemize}
+        \justifying
+        \item Where is the robot? 
+        \item Fuse data from multiple sensors reduces error.  
+        \item The software that performs sensor fusion must be easy to use and highly customizable.  
+        \item Robot Localization Package.
+    \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth} 
+    \begin{figure}
+        \includegraphics[scale=3.0]{fig/robotlocalization.png}
+        \caption*{Fonte: \href{http://docs.ros.org/melodic/api/robot_localization/html/index.html}{robot\_localization Wiki}}
+    \end{figure}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\section{Motivation}
+\begin{frame}{Motivation}
+    \justifying
+    There are other packages that perform state estimation, but they are often difficult to apply for some reasons: 
+    \begin{itemize}
+        \item Limited sensor inputs. 
+        \item Limited to 2D estimation. 
+        \item Limited ROS message support. 
+        \item Limited control over sensor data. 
+    \end{itemize}      
+    Robot Localization Package was developed to overcome those limitations and be as general-purpose as possible.
+\end{frame}
+
+\section{Extended Kalman Filter Node}
+\begin{frame}{Extended Kalman Filter Node}
+    \justifying
+    The \textit{ekf\_localization\_node} was developed, an implementation of Extended Kalman Filter. The goal is to estimate the full 3D pose and velocity of a mobile robot over time.
+    
+    The process can be described as a nonlinear dynamic system:                          
+    
+       \begin{equation}
+        x_k=f(x_{k-1})+w_{k-1},
+       \end{equation}
+    
+       where {\boldmath{$x_k$}} is the robot's system state at time $k$, {\boldmath{$f$}} is a nonlinear state transition function, and {\boldmath{$w_{k-1}$}} is the normally distributed process noise. Additionaly, measures are receveid of the form:
+
+       \begin{equation}
+           z_k=h(x_k)+v_k,
+       \end{equation}
+
+       where {\boldmath{$z_k$}} is the measurement at time $k$, {\boldmath{$h$}} is a nonlinear sensor model and {\boldmath{$v_k$}} is the normally distributed measurement noise.
+    
+\end{frame}
+
+\begin{frame}{Extended Kalman Filter Node}
+    \justifying
+    The first stage in the algorithm is a prediction step:
+    \begin{equation}
+        \hat{x}_k=f(x_{k-1}).    
+    \end{equation}
+    \begin{equation}
+        \hat{P}_k=FP_{k-1}F^T+Q,
+    \end{equation}
+    where {\boldmath{$P$}} is the estimate error covariance, {\boldmath{$F$}} is the Jacobian of {\boldmath{$f$}} and {\boldmath{$Q$}} is the process noise covariance. The next stage is a correction step shown in equations below.
+    \begin{equation}
+        K=\hat{P}_kH^T(H\hat{P}_kH^T+R)^{-1}.
+    \end{equation}
+    \begin{equation}
+        x_k=\hat{x}_k+K(z-H\hat{x}_k).
+    \end{equation}
+    \begin{equation}
+        P_k=(I-KH)\hat{P}_k(I-KH)^T+KRK^T,
+    \end{equation}
+    where {\boldmath{$K$}} is the Kalman Gain, {\boldmath{$R$}} is the measurement covariance and {\boldmath{$H$}} is the Jacobian of the observation model, in this application assumpted to be the identity matrix.
+\end{frame}
+
+\begin{frame}{Extended Kalman Filter Node}
+    \begin{itemize}
+        \justifying
+        \item The \textit{ekf\_localization\_node} allows partial updates of the state vector.
+        \item The process noise covariance, {\boldmath{$Q$}}, is exposed as a parameter to users (because it can be difficult to tune for some applications), allowing for an additional level of customization.
+    \end{itemize}
+\end{frame}
+
+\section{Experiments}
+\begin{frame}{Experiments}
+    \begin{columns}
+        \begin{column}{0.6\textwidth}
+            \begin{itemize}
+            \justifying
+            \item The \textit{ekf\_localization\_node} was tested in a MobileRobots Pioneer eqquiped with wheel encoders, two IMUs and two GPSes.
+            \item For each GPS, it was defined a transform {\boldmath{$T$}} that converts the robot's world frame coordinates to the GPS's UTM coordinates.
+            \item At any subsequent time $t$, the GPS measurement was transformed into the robot's world coordinate frame, \textit{odom}, by: 
+            \end{itemize}
+            \begin{center} $\left[ \begin{array}{c}
+                x_{odom}\\
+                y_{odom}\\
+                z_{odom}\\
+                1
+            \end{array}\right] = T^{-1} 
+            \left[\begin{array}{c}
+                x_{UTM_t}\\
+                y_{UTM_t}\\
+                z_{UTM_t}\\
+                1
+            \end{array}\right]$
+        \end{center}
+        \end{column}
+        \begin{column}{0.4\textwidth}            
+            \begin{figure}
+                \includegraphics[scale=0.27]{fig/pioneer.png}    
+                \caption*{Pioneer 3 with a custom sensor mounting rack}
+            \end{figure}
+        \end{column}
+    \end{columns}        
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{columns}
+    \begin{column}{0.55\textwidth}
+    \begin{itemize}
+    \justifying
+    \item In the first experiment, the distance between the robot's start and end positions were measured.
+
+    \item The experiment was repeated in multiple \textit{ekf\_localization\_node} sensors configurations: (1) only odometry, (2) fused odometry with a single IMU, (3) fused odometry with two IMUs, (4) fused odometry with two IMUs and a single GPS, (5) fused odometry with two IMUs and two GPS units.
+    \end{itemize}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path1.png}
+            \caption*{\justifying The robot's path. Its
+            world coordinate frame is shown in green.}
+        \end{figure}
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path2.png}
+            \caption*{Output of \textit{ekf\_localization\_node} (yellow) when fusing only raw odometry data.}
+        \end{figure}
+    \end{column} 
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path3.png}
+            \caption*{Output of \textit{ekf\_localization\_node} (cyan) when fusing data from odometry and a single IMU.}
+        \end{figure} 
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path4.png}
+            \caption*{Output of \textit{ekf\_localization\_node} (orange) when fusing data from odometry and two IMUs.}
+        \end{figure}
+    \end{column} 
+    \begin{column}{0.5\textwidth}
+        \begin{itemize}
+            \justifying
+            \item The collection area contains
+            many areas with strong electromagnetic interference.
+            \item The second IMU stopped reporting data halfway through the collection.
+        \end{itemize}  
+     \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path5.png}
+            \caption*{Output of \textit{ekf\_localization\_node} (blue) when fusing data from odometry, two IMUs and a single GPS.}
+        \end{figure}
+    \end{column} 
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path6.png}
+            \caption*{Output of \textit{ekf\_localization\_node} (blue) when fusing data from odometry, two IMUs and two GPS units.}
+        \end{figure} 
+    \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{table}[]
+        \caption*{Errors for five different sensor configurations}
+        \begin{tabular}{|l|l|l|}
+        \hline
+        \multicolumn{1}{|c|}{\textit{\textbf{Sensor set}}} & \multicolumn{1}{c|}{\textit{\textbf{Error x,y (m)}}} & \multicolumn{1}{c|}{\textit{\textbf{\begin{tabular}[c]{@{}c@{}}Estimate Std.\\ Dev.\\ x,y (m)\end{tabular}}}} \\ \hline
+        Odometry                                           & 69.65, 160.33                                        & 593.09, 359.08                                                                                                \\ \hline
+        Odometry + one IMU                                 & 10.23, 47.09                                         & 5.25, 5.25                                                                                                    \\ \hline
+        Odometry + two IMUs*                               & 12.90, 40.72                                         & 5.23, 5.24                                                                                                    \\ \hline
+        Odometry + two IMUs* + one GPS                     & 1.21, 0.26                                           & 0.64, 0.40                                                                                                    \\ \hline
+        Odometry + two IMUs* + two GPS units                    & 0.79, 0.58                                           & 0.54, 0.34                                                                                                    \\ \hline
+        \end{tabular}
+        \caption*{*IMU 2 failed after approximately 45\% of the collection}
+        \end{table}
+\end{frame}
+
+\begin{frame} {Experiments}
+    \begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{itemize}
+            \justifying
+            \item In the second experiment, the performance of filter when GPS signals arrive infrequently was evaluated.    
+            \item The sensor configuration was odometry, both IMUs and one GPS.
+            \item The collection log was filtered such that GPS data was only available once every 120 seconds.
+            \item At the end of the run, the vehicle’s loop closure
+            (x, y) absolute error is (12.06, 0.52) meters.
+        \end{itemize}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+        \begin{figure}
+            \includegraphics[scale=0.25]{fig/path7.png}
+            \caption*{\justifying Output of \textit{ekf\_localization\_node} (white) when fusing odometry,
+            IMU, and infrequently reported GPS data. GPS fixes occur at the green circles}
+        \end{figure}
+    \end{column}
+    \end{columns}    
+\end{frame}
+
+\section{Discussion}
+\begin{frame} {Discussion}
+    \begin{itemize}
+        \justifying
+        \item The inclusion of IMUs solved the problem of the big errors using only odometry.
+        \item Despite the fact that odometry only truly measures \textit{x} and yaw velocity, more information can be inferred.
+        \item Exteroceptive sensors such as laser scanners or cameras could
+        be used as well.
+        \item The sensor data customization
+        parameters for \textit{ekf\_localization\_node} can yield a much larger set of possible configurations.        
+    \end{itemize}
+\end{frame}
+
+\section{Conclusion and Future Work}
+\begin{frame}{Conclusion and Future Work}
+    \justifying
+    The \textit{ekf\_localization\_node} was also applied across multiple projects involving both ground and aerial robots, for example the software was integrated with a Parrot AR.Drone 2.0 quadcopter. 
+    
+    It was planned to improve both \textit{ekf\_localization\_node} and \textit{robot\_localization} in a number of ways:
+    \begin{itemize}
+        \justifying        
+        \item Support for linear acceleration \checkmark
+        \item Add Unscented Kalman Filter Node \checkmark
+        \item Add Particle Filter Node \xmark
+        \item Covariance Override \xmark
+    \end{itemize}
+\end{frame}
+
+\end{document}
