@@ -118,13 +118,13 @@ Implementation for the Robot Operating System}}
     where {\boldmath{$K$}} is the Kalman Gain, {\boldmath{$R$}} is the measurement covariance and {\boldmath{$H$}} is the Jacobian of the observation model, in this application assumpted to be the identity matrix.
 \end{frame}
 
-\begin{frame}{Extended Kalman Filter Node}
-    \begin{itemize}
-        \justifying
-        \item The \textit{ekf\_localization\_node} allows partial updates of the state vector.
-        \item The process noise covariance, {\boldmath{$Q$}}, is exposed as a parameter to users (because it can be difficult to tune for some applications), allowing for an additional level of customization.
-    \end{itemize}
-\end{frame}
+% \begin{frame}{Extended Kalman Filter Node}
+%     \begin{itemize}
+%         \justifying
+%         \item The \textit{ekf\_localization\_node} allows partial updates of the state vector.
+%         \item The process noise covariance, {\boldmath{$Q$}}, is exposed as a parameter to users (because it can be difficult to tune for some applications), allowing for an additional level of customization.
+%     \end{itemize}
+% \end{frame}
 
 \section{Experiments}
 \begin{frame}{Experiments}
@@ -290,12 +290,16 @@ Implementation for the Robot Operating System}}
     
     It was planned to improve both \textit{ekf\_localization\_node} and \textit{robot\_localization} in a number of ways:
     \begin{itemize}
-        \justifying        
+        \justifying   
+        \item Covariance Parameterization \checkmark     
         \item Support for linear acceleration \checkmark
         \item Add Unscented Kalman Filter Node \checkmark
         \item Add Particle Filter Node \xmark
-        \item Covariance Override \xmark
     \end{itemize}
 \end{frame}
 
+\begin{frame}
+    \centering
+    \Huge{Thank you!}
+\end{frame}
 \end{document}
